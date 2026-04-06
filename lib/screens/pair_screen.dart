@@ -69,7 +69,9 @@ class _PairScreenState extends State<PairScreen> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(15),
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodyLarge?.color?.withAlpha(15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -153,7 +155,9 @@ class _PairScreenState extends State<PairScreen> {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).textTheme.bodyLarge!.color!.withAlpha(10),
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge!.color!.withAlpha(10),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
@@ -168,7 +172,9 @@ class _PairScreenState extends State<PairScreen> {
                             style: GoogleFonts.lora(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).textTheme.bodyLarge?.color,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyLarge?.color,
                               letterSpacing: 4,
                             ),
                             textCapitalization: TextCapitalization.characters,
@@ -215,13 +221,6 @@ class _PairScreenState extends State<PairScreen> {
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 243, 121, 115),
                           borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color.fromARGB(255, 254, 180, 177),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _join,
@@ -267,7 +266,9 @@ class _PairScreenState extends State<PairScreen> {
                           color: Theme.of(context).textTheme.bodyLarge?.color,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
-                          decorationColor: Theme.of(context).textTheme.bodyLarge?.color,
+                          decorationColor: Theme.of(
+                            context,
+                          ).textTheme.bodyLarge?.color,
                         ),
                       ),
                     ),

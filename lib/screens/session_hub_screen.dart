@@ -170,7 +170,9 @@ class _SessionHubScreenState extends State<SessionHubScreen>
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
-          child: CircularProgressIndicator(color: Theme.of(context).primaryColor),
+          child: CircularProgressIndicator(
+            color: Theme.of(context).primaryColor,
+          ),
         ),
       );
     }
@@ -255,7 +257,9 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                             style: GoogleFonts.inriaSans(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).textTheme.bodyLarge?.color,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyLarge?.color,
                             ),
                           ),
                           const Spacer(),
@@ -265,12 +269,16 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                               width: 38,
                               height: 38,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(15),
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color?.withAlpha(15),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 Icons.logout_rounded,
-                                color: Theme.of(context).textTheme.bodyLarge?.color,
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
                                 size: 18,
                               ),
                             ),
@@ -313,11 +321,15 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  color: Theme.of(
+                                    context,
+                                  ).scaffoldBackgroundColor,
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Theme.of(context).primaryColor.withAlpha(20),
+                                      color: Theme.of(
+                                        context,
+                                      ).primaryColor.withAlpha(20),
                                       blurRadius: 16,
                                       spreadRadius: 4,
                                     ),
@@ -421,13 +433,6 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                                     115,
                                   ),
                                   borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color.fromARGB(255, 254, 180, 177),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,

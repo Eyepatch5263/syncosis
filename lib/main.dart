@@ -8,6 +8,9 @@ import 'screens/welcome_screen.dart';
 import 'services/session_service.dart';
 import 'services/user_service.dart';
 import 'services/websocket_service.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +23,8 @@ void main() async {
     androidNotificationOptions: AndroidNotificationOptions(
       channelId: 'syncosis_session',
       channelName: 'Syncosis Session',
-      channelDescription: 'Keeps your scrapbook session alive in the background.',
+      channelDescription:
+          'Keeps your scrapbook session alive in the background.',
       onlyAlertOnce: true,
     ),
     iosNotificationOptions: const IOSNotificationOptions(
@@ -45,16 +49,49 @@ void main() async {
   runApp(SyncosisApp(userService: userService));
 }
 
-class SyncosisApp extends StatelessWidget {
+class SyncosisApp extends StatefulWidget {
+  final UserService userService;
+
   const SyncosisApp({super.key, required this.userService});
 
-  final UserService userService;
+  @override
+  State<SyncosisApp> createState() => _SyncosisAppState();
+}
+
+class _SyncosisAppState extends State<SyncosisApp> {
+  StreamSubscription<InternetConnectionStatus>? _connectionSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectionSubscription = InternetConnectionChecker.createInstance()
+        .onStatusChange
+        .listen((status) {
+          if (status == InternetConnectionStatus.disconnected) {
+            Fluttertoast.cancel();
+            Fluttertoast.showToast(
+              msg: "Internet connection is required to stay in sync.",
+              toastLength: Toast.LENGTH_LONG,
+              gravity: ToastGravity.BOTTOM,
+              backgroundColor: const Color(0xFF2D1B3D).withAlpha(220),
+              textColor: Colors.white,
+              fontSize: 14.0,
+            );
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _connectionSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: userService),
+        ChangeNotifierProvider.value(value: widget.userService),
         ChangeNotifierProvider(create: (_) => SessionService()),
         ChangeNotifierProvider(create: (_) => WebSocketService()),
       ],
@@ -62,7 +99,7 @@ class SyncosisApp extends StatelessWidget {
         title: 'Syncosis',
         debugShowCheckedModeBanner: false,
         themeMode: ThemeMode.system,
-        
+
         // ── Aesthetic Light Theme ──
         theme: ThemeData(
           useMaterial3: true,
@@ -96,7 +133,9 @@ class SyncosisApp extends StatelessWidget {
           brightness: Brightness.dark,
           scaffoldBackgroundColor: const Color(0xFF1A131F),
           canvasColor: const Color(0xFF221929),
-          cardColor: const Color(0xFF2D2336), // Replaces #F5F2EF boxes in dark mode
+          cardColor: const Color(
+            0xFF2D2336,
+          ), // Replaces #F5F2EF boxes in dark mode
           primaryColor: const Color(0xFFE85D5D),
           colorScheme: const ColorScheme.dark(
             primary: Color(0xFFE85D5D),
@@ -116,7 +155,7 @@ class SyncosisApp extends StatelessWidget {
             titleSmall: GoogleFonts.inriaSans(color: const Color(0xFFBCAEB8)),
           ),
         ),
-        
+
         home: const WelcomeScreen(),
       ),
     );
