@@ -32,7 +32,7 @@
 - **Interactive Video Chip & Post Embeds:** Convert long mp4 files or memories into styled "Polaroid" wrappers right on the main timeline.
 - **Immersive Voice Notes Audio Cards:** A custom audio player renders directly on the UI tree providing live scrub bars and timestamp trackers so partners can directly drop recorded letters onto the frame.
 
-## 🛠 Tech Stack 
+## Tech Stack 
 
 - **Frontend Framework:** `Flutter` / `Dart`. 
 - **Networking:** Custom Node WebSocket `wss://` backend wrapper for immediate cross-client distribution.
