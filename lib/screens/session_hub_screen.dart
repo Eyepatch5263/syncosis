@@ -92,19 +92,19 @@ class _SessionHubScreenState extends State<SessionHubScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Sign out?',
           style: GoogleFonts.lora(
-            color: const Color(0xFF2D1B3D),
+            color: Theme.of(context).textTheme.bodyLarge?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'You will need to choose a new username to use Syncosis again.',
           style: GoogleFonts.inriaSans(
-            color: const Color(0xFF757575),
+            color: Theme.of(context).textTheme.bodySmall?.color,
             height: 1.5,
           ),
         ),
@@ -167,10 +167,10 @@ class _SessionHubScreenState extends State<SessionHubScreen>
     final user = context.watch<UserService>().currentUser;
 
     if (user == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFFDF8F3),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFE85D5D)),
+          child: CircularProgressIndicator(color: Theme.of(context).primaryColor),
         ),
       );
     }
@@ -178,7 +178,7 @@ class _SessionHubScreenState extends State<SessionHubScreen>
     return PopScope(
       canPop: false,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFDF8F3),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: _currentNavIndex == 1
             ? const TimelineScreen()
             : SafeArea(
@@ -255,7 +255,7 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                             style: GoogleFonts.inriaSans(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF2D1B3D),
+                              color: Theme.of(context).textTheme.bodyLarge?.color,
                             ),
                           ),
                           const Spacer(),
@@ -265,12 +265,12 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                               width: 38,
                               height: 38,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF2D1B3D).withAlpha(15),
+                                color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(15),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.logout_rounded,
-                                color: Color(0xFF2D1B3D),
+                                color: Theme.of(context).textTheme.bodyLarge?.color,
                                 size: 18,
                               ),
                             ),
@@ -313,13 +313,11 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFDF8F3),
+                                  color: Theme.of(context).scaffoldBackgroundColor,
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(
-                                        0xFFE85D5D,
-                                      ).withAlpha(20),
+                                      color: Theme.of(context).primaryColor.withAlpha(20),
                                       blurRadius: 16,
                                       spreadRadius: 4,
                                     ),
@@ -343,7 +341,7 @@ class _SessionHubScreenState extends State<SessionHubScreen>
                         style: GoogleFonts.inriaSerif(
                           fontSize: 30,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF2D1B3D),
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
                           height: 1.2,
                         ),
                       ),
@@ -573,7 +571,7 @@ class _SessionHubScreenState extends State<SessionHubScreen>
         // ── Bottom Navigation Bar ──
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFFDF8F3),
+            color: Theme.of(context).scaffoldBackgroundColor,
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF2D1B3D).withAlpha(10),

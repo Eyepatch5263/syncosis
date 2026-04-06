@@ -188,9 +188,9 @@ class _AuthScreenState extends State<AuthScreen>
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(30),
                       topRight: Radius.circular(30),
                     ),
@@ -203,7 +203,7 @@ class _AuthScreenState extends State<AuthScreen>
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0F0F0),
+                            color: Theme.of(context).dividerColor.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(25),
                           ),
                           child: TabBar(
@@ -211,10 +211,10 @@ class _AuthScreenState extends State<AuthScreen>
                             indicatorSize: TabBarIndicatorSize.tab,
                             dividerColor: Colors.transparent,
                             indicator: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(25),
                               border: Border.all(
-                                color: const Color(0xFFE0E0E0),
+                                color: Theme.of(context).dividerColor.withOpacity(0.1),
                                 width: 1,
                               ),
                               boxShadow: [
@@ -225,7 +225,7 @@ class _AuthScreenState extends State<AuthScreen>
                                 ),
                               ],
                             ),
-                            labelColor: const Color(0xFF2D1B3D),
+                            labelColor: Theme.of(context).textTheme.bodyLarge?.color,
                             unselectedLabelColor: const Color(0xFF9E9E9E),
                             labelStyle: const TextStyle(
                               fontWeight: FontWeight.w600,
@@ -311,7 +311,7 @@ class _AuthScreenState extends State<AuthScreen>
                   Text(
                     'Remember me',
                     style: TextStyle(
-                      color: Color.fromARGB(255, 72, 72, 72),
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                       fontSize: 12,
                     ),
                   ),
@@ -498,18 +498,18 @@ class _AuthScreenState extends State<AuthScreen>
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 239, 239, 239),
+        color: Theme.of(context).dividerColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(14),
       ),
       child: TextField(
         controller: controller,
         obscureText: obscure,
-        style: const TextStyle(color: Color(0xFF212121), fontSize: 14),
+        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0), width: 1),
+            borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1), width: 1),
           ),
           hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
           prefixIcon: Padding(
@@ -545,9 +545,9 @@ class _AuthScreenState extends State<AuthScreen>
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+          border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1), width: 1),
         ),
         child: Material(
           color: Colors.transparent,
@@ -559,12 +559,12 @@ class _AuthScreenState extends State<AuthScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: const Color(0xFF616161), size: 22),
+                Icon(icon, color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.6), size: 22),
                 const SizedBox(width: 8),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xFF616161),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.8),
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),

@@ -63,16 +63,16 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     final session = context.watch<SessionService>().currentSession;
 
     if (session == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFFDF8F3),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFE85D5D)),
+          child: CircularProgressIndicator(color: Theme.of(context).primaryColor),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF8F3),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -90,12 +90,12 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2D1B3D).withAlpha(15),
+                        color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new_rounded,
-                        color: Color(0xFF2D1B3D),
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                         size: 16,
                       ),
                     ),
@@ -106,7 +106,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                     style: GoogleFonts.lora(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2D1B3D),
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                   ),
                   const Spacer(),
@@ -129,7 +129,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       style: GoogleFonts.lora(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2D1B3D),
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -139,7 +139,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inriaSans(
                         fontSize: 14,
-                        color: const Color(0xFF9E9E9E),
+                        color: Theme.of(context).textTheme.bodySmall?.color,
                         height: 1.5,
                       ),
                     ),
@@ -156,11 +156,11 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                           vertical: 32,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2D1B3D).withAlpha(10),
+                              color: Theme.of(context).textTheme.bodyLarge!.color!.withAlpha(10),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -172,7 +172,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                               'UNIQUE PAIR KEY',
                               style: GoogleFonts.inriaSans(
                                 fontSize: 11,
-                                color: const Color(0xFFBDBDBD),
+                                color: Theme.of(context).textTheme.bodySmall?.color,
                                 letterSpacing: 3,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -183,7 +183,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                               style: GoogleFonts.lora(
                                 fontSize: 36,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF2D1B3D),
+                                color: Theme.of(context).textTheme.bodyLarge?.color,
                                 letterSpacing: 4,
                               ),
                             ),
@@ -210,7 +210,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                         padding: const EdgeInsets.only(right: 8),
                         child: Icon(
                           Icons.favorite,
-                          color: const Color(0xFF9E9E9E).withAlpha(80),
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withAlpha(80),
                           size: 24,
                         ),
                       ),
@@ -225,7 +225,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2D1B3D).withAlpha(8),
+                        color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(8),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -235,7 +235,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE85D5D).withAlpha(150),
+                              color: Theme.of(context).primaryColor.withAlpha(150),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -244,7 +244,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                             'Waiting for your partner...',
                             style: GoogleFonts.inriaSans(
                               fontSize: 13,
-                              color: const Color(0xFF757575),
+                              color: Theme.of(context).textTheme.bodySmall?.color,
                             ),
                           ),
                         ],

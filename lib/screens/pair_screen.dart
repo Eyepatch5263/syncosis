@@ -54,7 +54,7 @@ class _PairScreenState extends State<PairScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF8F3),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -69,12 +69,12 @@ class _PairScreenState extends State<PairScreen> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2D1B3D).withAlpha(15),
+                        color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new_rounded,
-                        color: Color(0xFF2D1B3D),
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                         size: 16,
                       ),
                     ),
@@ -85,7 +85,7 @@ class _PairScreenState extends State<PairScreen> {
                     style: GoogleFonts.lora(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2D1B3D),
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                   ),
                   const Spacer(),
@@ -112,7 +112,7 @@ class _PairScreenState extends State<PairScreen> {
                           style: GoogleFonts.lora(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2D1B3D),
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -134,7 +134,7 @@ class _PairScreenState extends State<PairScreen> {
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inriaSans(
                         fontSize: 14,
-                        color: const Color(0xFF9E9E9E),
+                        color: Theme.of(context).textTheme.bodySmall?.color,
                         height: 1.5,
                       ),
                     ),
@@ -149,11 +149,11 @@ class _PairScreenState extends State<PairScreen> {
                         vertical: 28,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2D1B3D).withAlpha(10),
+                            color: Theme.of(context).textTheme.bodyLarge!.color!.withAlpha(10),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
@@ -168,7 +168,7 @@ class _PairScreenState extends State<PairScreen> {
                             style: GoogleFonts.lora(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF2D1B3D),
+                              color: Theme.of(context).textTheme.bodyLarge?.color,
                               letterSpacing: 4,
                             ),
                             textCapitalization: TextCapitalization.characters,
@@ -264,10 +264,10 @@ class _PairScreenState extends State<PairScreen> {
                         "I don't have a code",
                         style: GoogleFonts.inriaSans(
                           fontSize: 14,
-                          color: const Color(0xFF2D1B3D),
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
-                          decorationColor: const Color(0xFF2D1B3D),
+                          decorationColor: Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                     ),

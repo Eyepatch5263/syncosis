@@ -86,7 +86,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF8F3), // Warm cream background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -107,7 +107,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
                 child: Container(
-                  color: Colors.white.withAlpha(160), // Frosty white glass filling the screen
+                  color: Theme.of(context).scaffoldBackgroundColor.withAlpha(160), // Adapts frosty glass logic
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: SafeArea(
                     child: AnimatedBuilder(
@@ -160,7 +160,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inriaSans(
                               fontSize: 22,
-                              color: const Color(0xFF2D1B3D), 
+                              color: Theme.of(context).textTheme.bodyLarge?.color, 
                               letterSpacing: 1.0,
                               fontWeight: FontWeight.w600,
                             ),
@@ -174,7 +174,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inriaSans(
                               fontSize: 15,
-                              color: const Color(0xFF2D1B3D).withAlpha(160), 
+                              color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(160), 
                               height: 1.5,
                               letterSpacing: 0.5,
                               fontWeight: FontWeight.w400,
@@ -189,7 +189,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             child: Container(
                               width: 140,
                               height: 3,
-                              color: const Color(0xFF2D1B3D).withAlpha(20),
+                              color: Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(20),
                               child: const LinearProgressIndicator(
                                 valueColor: AlwaysStoppedAnimation(
                                   Color(0xFFE85D5D), // Signature coral-rose

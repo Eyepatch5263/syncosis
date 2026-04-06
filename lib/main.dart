@@ -61,22 +61,62 @@ class SyncosisApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Syncosis',
         debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+        
+        // ── Aesthetic Light Theme ──
         theme: ThemeData(
           useMaterial3: true,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: Colors.black,
+          brightness: Brightness.light,
+          scaffoldBackgroundColor: const Color(0xFFF9F6F0),
+          canvasColor: Colors.white,
+          cardColor: const Color(0xFFF5F2EF),
+          primaryColor: const Color(0xFFE85D5D),
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFFE85D5D),
+            surface: Colors.white,
+            onSurface: Color(0xFF2D1B3D),
+          ),
+          iconTheme: const IconThemeData(color: Color(0xFF2D1B3D)),
           textTheme: TextTheme(
-            bodyLarge: GoogleFonts.inriaSans(),
-            bodyMedium: GoogleFonts.inriaSans(),
-            bodySmall: GoogleFonts.inriaSans(),
-            headlineLarge: GoogleFonts.lora(),
-            headlineMedium: GoogleFonts.lora(),
-            headlineSmall: GoogleFonts.lora(),
-            titleLarge: GoogleFonts.lora(),
-            titleMedium: GoogleFonts.inriaSans(),
-            titleSmall: GoogleFonts.inriaSans(),
+            bodyLarge: GoogleFonts.inriaSans(color: const Color(0xFF2D1B3D)),
+            bodyMedium: GoogleFonts.inriaSans(color: const Color(0xFF2D1B3D)),
+            bodySmall: GoogleFonts.inriaSans(color: const Color(0xFF5A4B6B)),
+            headlineLarge: GoogleFonts.lora(color: const Color(0xFF2D1B3D)),
+            headlineMedium: GoogleFonts.lora(color: const Color(0xFF2D1B3D)),
+            headlineSmall: GoogleFonts.lora(color: const Color(0xFF2D1B3D)),
+            titleLarge: GoogleFonts.lora(color: const Color(0xFF2D1B3D)),
+            titleMedium: GoogleFonts.inriaSans(color: const Color(0xFF2D1B3D)),
+            titleSmall: GoogleFonts.inriaSans(color: const Color(0xFF5A4B6B)),
           ),
         ),
+
+        // ── Immersive Dark Theme ──
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF1A131F),
+          canvasColor: const Color(0xFF221929),
+          cardColor: const Color(0xFF2D2336), // Replaces #F5F2EF boxes in dark mode
+          primaryColor: const Color(0xFFE85D5D),
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFFE85D5D),
+            surface: Color(0xFF221929),
+            onSurface: Color(0xFFF4ECE6),
+          ),
+          iconTheme: const IconThemeData(color: Color(0xFFF4ECE6)),
+          textTheme: TextTheme(
+            bodyLarge: GoogleFonts.inriaSans(color: const Color(0xFFF4ECE6)),
+            bodyMedium: GoogleFonts.inriaSans(color: const Color(0xFFF4ECE6)),
+            bodySmall: GoogleFonts.inriaSans(color: const Color(0xFFBCAEB8)),
+            headlineLarge: GoogleFonts.lora(color: const Color(0xFFF4ECE6)),
+            headlineMedium: GoogleFonts.lora(color: const Color(0xFFF4ECE6)),
+            headlineSmall: GoogleFonts.lora(color: const Color(0xFFF4ECE6)),
+            titleLarge: GoogleFonts.lora(color: const Color(0xFFF4ECE6)),
+            titleMedium: GoogleFonts.inriaSans(color: const Color(0xFFF4ECE6)),
+            titleSmall: GoogleFonts.inriaSans(color: const Color(0xFFBCAEB8)),
+          ),
+        ),
+        
         home: const WelcomeScreen(),
       ),
     );

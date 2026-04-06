@@ -605,7 +605,7 @@ class _CanvasScreenState extends State<CanvasScreen>
         // Back just navigates away; session stays alive.
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFFDF8F3),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Stack(
           children: [
             // ── Infinite canvas ──
@@ -704,8 +704,8 @@ class _CanvasScreenState extends State<CanvasScreen>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0xFFFDF8F3),
-                      const Color(0xFFFDF8F3).withAlpha(0),
+                      Theme.of(context).scaffoldBackgroundColor,
+                      Theme.of(context).scaffoldBackgroundColor.withAlpha(0),
                     ],
                   ),
                 ),
@@ -724,7 +724,7 @@ class _CanvasScreenState extends State<CanvasScreen>
                             width: 38,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(200),
+                              color: Theme.of(context).cardColor.withAlpha(200),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
@@ -838,7 +838,7 @@ class _CanvasScreenState extends State<CanvasScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
@@ -915,25 +915,25 @@ class _CanvasScreenState extends State<CanvasScreen>
                       const SizedBox(width: 8),
 
                       // Vertical Divider
-                      Container(width: 1, height: 24, color: Colors.grey[300]),
+                      Container(width: 1, height: 24, color: Theme.of(context).dividerColor.withOpacity(0.2)),
                       const SizedBox(width: 8),
 
                       // Undo / Redo
                       _buildToolButton(
                         icon: Icons.undo_rounded,
                         onTap: ws.canUndo ? ws.undoLocalStroke : () {},
-                        color: ws.canUndo ? const Color(0xFF2D1B3D) : Colors.grey[400],
+                        color: ws.canUndo ? Theme.of(context).textTheme.bodyLarge?.color : Colors.grey[400],
                       ),
                       const SizedBox(width: 2),
                       _buildToolButton(
                         icon: Icons.redo_rounded,
                         onTap: ws.canRedo ? ws.redoLocalStroke : () {},
-                        color: ws.canRedo ? const Color(0xFF2D1B3D) : Colors.grey[400],
+                        color: ws.canRedo ? Theme.of(context).textTheme.bodyLarge?.color : Colors.grey[400],
                       ),
                       const SizedBox(width: 8),
 
                       // Vertical Divider
-                      Container(width: 1, height: 24, color: Colors.grey[300]),
+                      Container(width: 1, height: 24, color: Theme.of(context).dividerColor.withOpacity(0.2)),
                       const SizedBox(width: 8),
                       
                       _buildToolButton(
@@ -991,7 +991,7 @@ class _CanvasScreenState extends State<CanvasScreen>
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5F2EF),
+                            color: Theme.of(context).cardColor,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -1001,9 +1001,9 @@ class _CanvasScreenState extends State<CanvasScreen>
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.delete_outline_rounded,
-                            color: Color(0xFF2D1B3D),
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
                             size: 19,
                           ),
                         ),
@@ -1562,7 +1562,7 @@ class _CanvasScreenState extends State<CanvasScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFE85D5D) : const Color(0xFFF5F2EF),
+          color: active ? const Color(0xFFE85D5D) : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -1570,7 +1570,7 @@ class _CanvasScreenState extends State<CanvasScreen>
           children: [
             Icon(
               icon,
-              color: active ? Colors.white : const Color(0xFF2D1B3D),
+              color: active ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
               size: 16,
             ),
             const SizedBox(width: 4),
@@ -1579,7 +1579,7 @@ class _CanvasScreenState extends State<CanvasScreen>
               style: GoogleFonts.inriaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: active ? Colors.white : const Color(0xFF2D1B3D),
+                color: active ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
           ],
@@ -1599,10 +1599,10 @@ class _CanvasScreenState extends State<CanvasScreen>
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F2EF),
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: color ?? const Color(0xFF2D1B3D), size: 18),
+        child: Icon(icon, color: color ?? Theme.of(context).textTheme.bodyLarge?.color, size: 18),
       ),
     );
   }

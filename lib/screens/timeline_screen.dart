@@ -7,7 +7,7 @@ class TimelineScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF8F3),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -26,7 +26,7 @@ class TimelineScreen extends StatelessWidget {
                 style: GoogleFonts.inriaSerif(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D1B3D),
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                   height: 1.2,
                 ),
               ),
