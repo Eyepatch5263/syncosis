@@ -13,6 +13,9 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter/rendering.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:gal/gal.dart';
 
 import '../models/canvas_media.dart';
 import '../painters/canvas_painter.dart';
@@ -38,6 +41,9 @@ class _CanvasScreenState extends State<CanvasScreen>
   bool _partnerLeftDialogShown = false;
   CanvasTool _tool = CanvasTool.pen;
   bool _isUploadingMedia = false;
+  bool _isExporting = false;
+  final GlobalKey _exportKey = GlobalKey();
+
   double? _scaleStartWidth;
   double? _scaleStartHeight;
   double? _scaleStartRotation;
@@ -244,6 +250,74 @@ class _CanvasScreenState extends State<CanvasScreen>
         metadata: meta,
       ),
     );
+  }
+
+  Future<void> _exportCanvas() async {
+    // 1. Request OS-level permissions via the Gal native handler
+    try {
+      final hasAccess = await Gal.hasAccess(toAlbum: true);
+      if (!hasAccess) {
+        final requestAccess = await Gal.requestAccess(toAlbum: true);
+        if (!requestAccess) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Gallery permission is required to save the canvas!')),
+            );
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not request gallery permissions: $e')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      // 1. Give the UI a brief moment to finish any pending build frames 
+      // so the RepaintBoundary is fully flushed to the GPU.
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final boundary = _exportKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) throw Exception("Could not locate canvas boundary");
+
+      // 2. Capture image. We use pixelRatio 1.0 because 4000x4000 at 1x is already ultra HD 
+      // (16 megapixels) and keeps memory usage within safe mobile constraints.
+      final image = await boundary.toImage(pixelRatio: 1.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      // 3. Save to gallery via native API
+      await Gal.putImageBytes(
+        pngBytes,
+        name: "Syncosis_Scrapbook_${DateTime.now().millisecondsSinceEpoch}",
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFF66BB6A),
+            content: Text('Canvas exported to your photo gallery!'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFE85D5D),
+            content: Text('Error exporting canvas: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
   }
 
   Future<void> _showTextSheet() async {
@@ -693,6 +767,81 @@ class _CanvasScreenState extends State<CanvasScreen>
                 ),
               ),
 
+            // ── Hidden 4000x4000 full-fidelity canvas replica for export ──
+            Positioned(
+              left: 0,
+              top: 0,
+              child: Offstage(
+                offstage: !_isExporting, // ONLY disabled when actually exporting to force GPU layout & paint cycle
+                child: IgnorePointer(
+                  child: RepaintBoundary(
+                    key: _exportKey,
+                    child: Container(
+                      width: 4000,
+                      height: 4000,
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: CanvasPainter(
+                                cachedPicture: ws.cachedStrokesPicture,
+                                activeStrokes: ws.activeStrokes,
+                                partnerCursor: null, // Omit cursor during export
+                              ),
+                            ),
+                          ),
+                          for (final item in ws.canvasItems)
+                            _buildExportItem(item),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Fullscreen Export Mask (Hides the huge replica above during extraction) ──
+            if (_isExporting)
+              Positioned.fill(
+                child: Container(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                         Container(
+                           padding: const EdgeInsets.all(24),
+                           decoration: BoxDecoration(
+                             color: Theme.of(context).cardColor,
+                             shape: BoxShape.circle,
+                             boxShadow: [
+                               BoxShadow(
+                                 color: const Color(0xFF2D1B3D).withAlpha(12),
+                                 blurRadius: 16,
+                                 offset: const Offset(0, 8),
+                               ),
+                             ],
+                           ),
+                           child: const CircularProgressIndicator(color: Color(0xFFDAA045), strokeWidth: 3),
+                         ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Capturing High-Resolution Canvas...',
+                          style: GoogleFonts.inriaSans(
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             // ── Top bar ──
             Positioned(
               top: 0,
@@ -785,6 +934,61 @@ class _CanvasScreenState extends State<CanvasScreen>
                             const SizedBox(width: 8),
                           ],
                         ),
+                        // export canvas
+                        if (!_isExporting)
+                          GestureDetector(
+                            onTap: _exportCanvas,
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor.withAlpha(200),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF2D1B3D).withAlpha(8),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.file_download_outlined,
+                                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Export',
+                                    style: GoogleFonts.inriaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (_isExporting)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor.withAlpha(200),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
                         // end session
                         GestureDetector(
                           onTap: () => _showEndRoomDialog(ws),
@@ -1014,6 +1218,32 @@ class _CanvasScreenState extends State<CanvasScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ── Export static replica (no viewport transforms or gestures) ──
+  Widget _buildExportItem(CanvasMedia item) {
+    final isAudio = item.type == MediaType.audio;
+    final isCompact = isAudio && item.width < _audioCompactThreshold;
+
+    return Positioned(
+      left: item.position.dx,
+      top: item.position.dy,
+      width: item.width,
+      height: item.height,
+      child: Transform.rotate(
+        angle: item.rotation,
+        child: FittedBox(
+          fit: BoxFit.fill,
+          child: SizedBox(
+            width: (item.metadata?['isPost'] == true) ? 240.0 : item.width,
+            height: (item.metadata?['isPost'] == true)
+                ? (240.0 * item.height / item.width)
+                : item.height,
+            child: _buildMediaContent(item, isCompact),
+          ),
         ),
       ),
     );
