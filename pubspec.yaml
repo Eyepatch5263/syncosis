@@ -45,6 +45,7 @@ dependencies:
   path_provider: ^2.1.0
   home_widget: ^0.7.0
   flutter_foreground_task: ^9.2.2
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +57,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app-icon.jpeg"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -72,6 +79,7 @@ flutter:
     - assets/images/feature_status.jpg
     - assets/images/feature_scribble.jpg
     - assets/images/feature_widget.jpg
+    - assets/images/splash.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -9,6 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/canvas_event.dart';
 import '../models/canvas_media.dart';
 import '../models/stroke.dart';
+import '../painters/canvas_painter.dart';
 import 'widget_service.dart';
 
 enum SyncState { disconnected, connecting, waitingForPartner, connected, partnerLeft }
@@ -18,7 +19,17 @@ class WebSocketService extends ChangeNotifier {
   SyncState syncState = SyncState.disconnected;
 
   final List<Stroke> strokes = [];
-  final Map<String, Stroke> _activeStrokes = {};
+  final Map<String, Stroke> _activeStrokesMap = {};
+  
+  // Undo/Redo Engine
+  final List<Stroke> undoStack = [];
+  bool get canUndo => strokes.any((s) => s.isLocal);
+  bool get canRedo => undoStack.isNotEmpty;
+
+  // Expose isolated lists for the Painter optimization
+  List<Stroke> get activeStrokes => _activeStrokesMap.values.toList();
+  Picture? cachedStrokesPicture;
+
   final List<CanvasMedia> canvasItems = [];
   Offset? partnerCursor;
 
@@ -73,7 +84,8 @@ class WebSocketService extends ChangeNotifier {
         _onPartnerDrawMove(event.data);
 
       case CanvasEventType.drawEnd:
-        _activeStrokes.remove(event.data['id'] as String);
+        _activeStrokesMap.remove(event.data['id'] as String);
+        _rebuildStrokeCache();
         _tryUpdateWidget();
 
       case CanvasEventType.cursorMove:
@@ -114,7 +126,7 @@ class WebSocketService extends ChangeNotifier {
       case CanvasEventType.eraseStroke:
         final id = event.data['id'] as String;
         strokes.removeWhere((s) => s.id == id);
-        notifyListeners();
+        _rebuildStrokeCache();
         _tryUpdateWidget();
 
       case CanvasEventType.removeCanvasItem:
@@ -145,6 +157,28 @@ class WebSocketService extends ChangeNotifier {
         notifyListeners();
         _tryUpdateWidget();
     }
+  }
+
+  /// Bakes all completed strokes into a single static hardware-accelerated 
+  /// Picture object to bypass expensive looping math in the UI thread.
+  void _rebuildStrokeCache() {
+    if (strokes.isEmpty) {
+      cachedStrokesPicture = null;
+      notifyListeners();
+      return;
+    }
+
+    final recorder = PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    for (final stroke in strokes) {
+      // Skip strokes currently being drawn actively
+      if (_activeStrokesMap.containsKey(stroke.id)) continue;
+      CanvasPainter.drawStroke(canvas, stroke);
+    }
+
+    cachedStrokesPicture = recorder.endRecording();
+    notifyListeners();
   }
 
   Timer? _widgetUpdateTimer;
@@ -192,18 +226,38 @@ class WebSocketService extends ChangeNotifier {
       userId: data['userId'] as String? ?? 'partner',
       isLocal: false,
     );
-    _activeStrokes[stroke.id] = stroke;
+    _activeStrokesMap[stroke.id] = stroke;
     strokes.add(stroke);
     notifyListeners();
   }
 
   void _onPartnerDrawMove(Map<String, dynamic> data) {
-    final stroke = _activeStrokes[data['id'] as String];
+    final stroke = _activeStrokesMap[data['id'] as String];
     if (stroke == null) return;
-    stroke.points.add(_offsetFromData(data));
+    
+    if (data.containsKey('points')) {
+      // Handle the new batched points array
+      final pts = data['points'] as List;
+      for (final p in pts) {
+        stroke.points.add(Offset(
+          (p['x'] as num).toDouble(),
+          (p['y'] as num).toDouble(),
+        ));
+      }
+    } else {
+      // Legacy single-point fallback
+      stroke.points.add(_offsetFromData(data));
+    }
+    
     notifyListeners();
     _tryUpdateWidget(throttle: true);
   }
+
+  // Batching timers for network efficiency
+  Timer? _drawMoveTimer;
+  final List<Offset> _drawMoveBatchQueue = [];
+  Timer? _cursorMoveTimer;
+  Offset? _lastCursorPos;
 
   void onDrawStart(Offset position, Color color, double width) {
     _currentStrokeId = _uuid.v4();
@@ -216,7 +270,11 @@ class WebSocketService extends ChangeNotifier {
       isLocal: true,
     );
     strokes.add(stroke);
-    _activeStrokes[_currentStrokeId!] = stroke;
+    _activeStrokesMap[_currentStrokeId!] = stroke;
+    
+    // Breaking the timeline invalidates future redos
+    undoStack.clear();
+    
     notifyListeners();
 
     _send(CanvasEvent(
@@ -233,40 +291,140 @@ class WebSocketService extends ChangeNotifier {
 
   void onDrawMove(Offset position) {
     if (_currentStrokeId == null) return;
-    _activeStrokes[_currentStrokeId!]?.points.add(position);
+    
+    // 1. Unthrottled local instantaneous render
+    _activeStrokesMap[_currentStrokeId!]?.points.add(position);
     notifyListeners();
 
-    _send(CanvasEvent(
-      type: CanvasEventType.drawMove,
-      data: {'id': _currentStrokeId, 'x': position.dx, 'y': position.dy},
-    ));
+    // 2. Queue for network batching
+    _drawMoveBatchQueue.add(position);
+
+    // 3. Dispatch at ~30 FPS network rate (32ms)
+    if (_drawMoveTimer == null || !_drawMoveTimer!.isActive) {
+      _drawMoveTimer = Timer(const Duration(milliseconds: 32), () {
+        if (_drawMoveBatchQueue.isEmpty || _currentStrokeId == null) return;
+
+        final pointsArray = _drawMoveBatchQueue
+            .map((p) => {'x': p.dx, 'y': p.dy})
+            .toList();
+            
+        _drawMoveBatchQueue.clear();
+
+        _send(CanvasEvent(
+          type: CanvasEventType.drawMove,
+          data: {'id': _currentStrokeId, 'points': pointsArray},
+        ));
+      });
+    }
   }
 
   void onDrawEnd() {
     if (_currentStrokeId == null) return;
+    
+    // Immediately flush any pending batched geometry
+    _drawMoveTimer?.cancel();
+    if (_drawMoveBatchQueue.isNotEmpty) {
+      final pointsArray = _drawMoveBatchQueue
+          .map((p) => {'x': p.dx, 'y': p.dy})
+          .toList();
+      _drawMoveBatchQueue.clear();
+      _send(CanvasEvent(
+        type: CanvasEventType.drawMove,
+        data: {'id': _currentStrokeId, 'points': pointsArray},
+      ));
+    }
+
     _send(CanvasEvent(
       type: CanvasEventType.drawEnd,
       data: {'id': _currentStrokeId},
     ));
-    _activeStrokes.remove(_currentStrokeId);
+    _activeStrokesMap.remove(_currentStrokeId);
     _currentStrokeId = null;
+    
+    _rebuildStrokeCache();
     _tryUpdateWidget();
   }
 
   void onCursorMove(Offset position) {
-    _send(CanvasEvent(
-      type: CanvasEventType.cursorMove,
-      data: {'x': position.dx, 'y': position.dy},
-    ));
+    _lastCursorPos = position;
+    
+    // Cursor move can also be safely detached from device refresh rate
+    if (_cursorMoveTimer == null || !_cursorMoveTimer!.isActive) {
+      _cursorMoveTimer = Timer(const Duration(milliseconds: 32), () {
+        if (_lastCursorPos == null) return;
+        _send(CanvasEvent(
+          type: CanvasEventType.cursorMove,
+          data: {'x': _lastCursorPos!.dx, 'y': _lastCursorPos!.dy},
+        ));
+      });
+    }
   }
 
   void eraseStroke(String strokeId) {
     strokes.removeWhere((s) => s.id == strokeId);
-    notifyListeners();
+    
+    _rebuildStrokeCache();
+    
     _send(CanvasEvent(
       type: CanvasEventType.eraseStroke,
       data: {'id': strokeId},
     ));
+    _tryUpdateWidget();
+  }
+
+  /// Removes the user's most recent local stroke without affecting the partner's strokes.
+  void undoLocalStroke() {
+    final idx = strokes.lastIndexWhere((s) => s.isLocal);
+    if (idx == -1) return;
+
+    final target = strokes.removeAt(idx);
+    undoStack.add(target);
+    
+    _rebuildStrokeCache();
+    
+    _send(CanvasEvent(
+      type: CanvasEventType.eraseStroke,
+      data: {'id': target.id},
+    ));
+    _tryUpdateWidget();
+  }
+
+  /// Restores the user's most recently undone stroke.
+  void redoLocalStroke() {
+    if (undoStack.isEmpty) return;
+
+    final target = undoStack.removeLast();
+    strokes.add(target);
+    
+    _rebuildStrokeCache();
+    
+    // To restore it on the partner's screen, we must resend it as a fast-forwarded stroke event.
+    // Technically, it's just firing drawStart followed by drawMove points array and drawEnd instantaneously.
+    _send(CanvasEvent(
+      type: CanvasEventType.drawStart,
+      data: {
+        'id': target.id,
+        'x': target.points.first.dx,
+        'y': target.points.first.dy,
+        'color': _colorToHex(target.color),
+        'width': target.width,
+        'userId': 'local', // We spoof it or trust the client logic
+      },
+    ));
+    
+    _send(CanvasEvent(
+      type: CanvasEventType.drawMove,
+      data: {
+        'id': target.id,
+        'points': target.points.map((p) => {'x': p.dx, 'y': p.dy}).toList()
+      },
+    ));
+
+    _send(CanvasEvent(
+      type: CanvasEventType.drawEnd,
+      data: {'id': target.id},
+    ));
+    
     _tryUpdateWidget();
   }
 
@@ -338,10 +496,11 @@ class WebSocketService extends ChangeNotifier {
 
   void _clearLocal() {
     strokes.clear();
-    _activeStrokes.clear();
+    _activeStrokesMap.clear();
     canvasItems.clear();
+    undoStack.clear();
     _currentStrokeId = null;
-    notifyListeners();
+    _rebuildStrokeCache();
   }
 
   void clearCanvas() {

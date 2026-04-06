@@ -837,7 +837,11 @@ class WidgetService {
     }
 
     // Draw strokes
-    final painter = CanvasPainter(strokes: strokes, partnerCursor: null);
+    final painter = CanvasPainter(
+      cachedPicture: null,
+      activeStrokes: strokes,
+      partnerCursor: null,
+    );
     painter.paint(canvas, const Size(10000, 10000));
 
     final picture = recorder.endRecording();

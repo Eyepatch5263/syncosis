@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../models/canvas_media.dart';
 import '../painters/canvas_painter.dart';
@@ -32,7 +33,7 @@ enum CanvasTool { pan, pen, erase }
 class _CanvasScreenState extends State<CanvasScreen>
     with WidgetsBindingObserver {
   Color _selectedColor = const Color(0xFF2D1B3D);
-  static const double _strokeWidth = 4.0;
+  double _strokeWidth = 4.0;
   bool _showToolbar = true;
   bool _partnerLeftDialogShown = false;
   CanvasTool _tool = CanvasTool.pen;
@@ -316,6 +317,92 @@ class _CanvasScreenState extends State<CanvasScreen>
     );
   }
 
+  // ── Brush Settings Sheet ──────────────────────────────────────────────────────
+
+  void _showBrushSettingsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Brush Thickness',
+                style: GoogleFonts.lora(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2D1B3D),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: const Color(0xFFE85D5D),
+                  inactiveTrackColor: const Color(0xFFE85D5D).withOpacity(0.2),
+                  thumbColor: const Color(0xFFE85D5D),
+                  overlayColor: const Color(0xFFE85D5D).withOpacity(0.1),
+                ),
+                child: Slider(
+                  value: _strokeWidth,
+                  min: 1.0,
+                  max: 30.0,
+                  divisions: 29,
+                  label: _strokeWidth.round().toString(),
+                  onChanged: (val) {
+                    setState(() => _strokeWidth = val);
+                    setSheetState(() {});
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showColorPickerDialog() {
+    Color tempColor = _selectedColor;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Pick a Color',
+          style: GoogleFonts.lora(fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: HueRingPicker(
+            pickerColor: tempColor,
+            onColorChanged: (color) => tempColor = color,
+            enableAlpha: false,
+            displayThumbColor: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Got it', style: TextStyle(color: Color(0xFFE85D5D))),
+            onPressed: () {
+              setState(() {
+                _selectedColor = tempColor;
+                _tool = CanvasTool.pen;
+              });
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Dialogs ───────────────────────────────────────────────────────────────────
 
   void _showDeleteDialog(CanvasMedia item, WebSocketService ws) {
@@ -571,7 +658,8 @@ class _CanvasScreenState extends State<CanvasScreen>
                     // Strokes only — items live in the outer Stack (screen space)
                     child: CustomPaint(
                       painter: CanvasPainter(
-                        strokes: ws.strokes,
+                        cachedPicture: ws.cachedStrokesPicture,
+                        activeStrokes: ws.activeStrokes,
                         partnerCursor: ws.partnerCursor,
                       ),
                       size: const Size(4000, 4000),
@@ -793,6 +881,61 @@ class _CanvasScreenState extends State<CanvasScreen>
                           ),
                         ),
                       const SizedBox(width: 8),
+
+                      // RGB Color Wheel Picker
+                      GestureDetector(
+                        onTap: _showColorPickerDialog,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const SweepGradient(
+                              colors: [
+                                Colors.red,
+                                Colors.yellow,
+                                Colors.green,
+                                Colors.cyan,
+                                Colors.blue,
+                                Colors.purple,
+                                Colors.red,
+                              ],
+                            ),
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(20),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Vertical Divider
+                      Container(width: 1, height: 24, color: Colors.grey[300]),
+                      const SizedBox(width: 8),
+
+                      // Undo / Redo
+                      _buildToolButton(
+                        icon: Icons.undo_rounded,
+                        onTap: ws.canUndo ? ws.undoLocalStroke : () {},
+                        color: ws.canUndo ? const Color(0xFF2D1B3D) : Colors.grey[400],
+                      ),
+                      const SizedBox(width: 2),
+                      _buildToolButton(
+                        icon: Icons.redo_rounded,
+                        onTap: ws.canRedo ? ws.redoLocalStroke : () {},
+                        color: ws.canRedo ? const Color(0xFF2D1B3D) : Colors.grey[400],
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Vertical Divider
+                      Container(width: 1, height: 24, color: Colors.grey[300]),
+                      const SizedBox(width: 8),
+                      
                       _buildToolButton(
                         icon: _isUploadingMedia
                             ? Icons.hourglass_top_rounded
@@ -826,6 +969,12 @@ class _CanvasScreenState extends State<CanvasScreen>
                         CanvasTool.pan,
                         Icons.pan_tool_outlined,
                         'Pan',
+                      ),
+                      const SizedBox(width: 6),
+                      // Brush Thickness
+                      _buildToolButton(
+                        icon: Icons.lens_outlined,
+                        onTap: _showBrushSettingsSheet,
                       ),
                       const SizedBox(width: 6),
                       _buildToolIcon(CanvasTool.pen, Icons.edit_rounded, 'Pen'),
@@ -957,14 +1106,16 @@ class _CanvasScreenState extends State<CanvasScreen>
           onScaleEnd: (_) {
             ws.broadcastItemMoved(item.id);
           },
-          child: FittedBox(
-            fit: BoxFit.fill,
-            child: SizedBox(
-              width: (item.metadata?['isPost'] == true) ? 240.0 : item.width,
-              height: (item.metadata?['isPost'] == true)
-                  ? (240.0 * item.height / item.width)
-                  : item.height,
-              child: _buildMediaContent(item, isCompact),
+          child: RepaintBoundary(
+            child: FittedBox(
+              fit: BoxFit.fill,
+              child: SizedBox(
+                width: (item.metadata?['isPost'] == true) ? 240.0 : item.width,
+                height: (item.metadata?['isPost'] == true)
+                    ? (240.0 * item.height / item.width)
+                    : item.height,
+                child: _buildMediaContent(item, isCompact),
+              ),
             ),
           ),
         ),
@@ -999,6 +1150,8 @@ class _CanvasScreenState extends State<CanvasScreen>
       // Image fallback
       mediaWidget = Image.network(
         item.url,
+        filterQuality: FilterQuality.low, // GPU optimization
+        cacheWidth: 600, // Reduced texture size constraint
         fit: (item.metadata != null && item.metadata!['isPost'] == true)
             ? BoxFit.cover
             : BoxFit.contain,
@@ -1029,6 +1182,8 @@ class _CanvasScreenState extends State<CanvasScreen>
         final tMediaWidget = isSecondary
             ? Image.network(
                 targetUrl,
+                filterQuality: FilterQuality.low, // GPU optimization
+                cacheWidth: 600, // Reduced texture size constraint
                 fit: BoxFit.cover,
                 loadingBuilder: (_, child, progress) => progress == null
                     ? child
@@ -1436,6 +1591,7 @@ class _CanvasScreenState extends State<CanvasScreen>
   Widget _buildToolButton({
     required IconData icon,
     required VoidCallback onTap,
+    Color? color,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -1446,7 +1602,7 @@ class _CanvasScreenState extends State<CanvasScreen>
           color: const Color(0xFFF5F2EF),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: const Color(0xFF2D1B3D), size: 18),
+        child: Icon(icon, color: color ?? const Color(0xFF2D1B3D), size: 18),
       ),
     );
   }
