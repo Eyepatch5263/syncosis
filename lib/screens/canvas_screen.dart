@@ -4,7 +4,9 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -38,11 +40,18 @@ class _CanvasScreenState extends State<CanvasScreen>
   Color _selectedColor = const Color(0xFF2D1B3D);
   double _strokeWidth = 4.0;
   bool _showToolbar = true;
+  bool _isImmersive = false;
+  int _currentPage = 1;
   bool _partnerLeftDialogShown = false;
   CanvasTool _tool = CanvasTool.pen;
   bool _isUploadingMedia = false;
   bool _isExporting = false;
   final GlobalKey _exportKey = GlobalKey();
+  Timer? _tapDotTimer;
+  Offset? _pointerStart;
+  bool _penStrokeStarted = false;
+  double _pointerPressure = 1;
+  DateTime? _lastWheelTurn;
 
   double? _scaleStartWidth;
   double? _scaleStartHeight;
@@ -67,18 +76,6 @@ class _CanvasScreenState extends State<CanvasScreen>
     WidgetsBinding.instance.addObserver(this);
     _ws.addListener(_onWsState);
     _transformCtrl.addListener(_onCanvasTransform);
-    _startForegroundService();
-  }
-
-  Future<void> _startForegroundService() async {
-    final isRunning = await FlutterForegroundTask.isRunningService;
-    if (!isRunning) {
-      await FlutterForegroundTask.startService(
-        notificationTitle: 'Syncosis Session Active',
-        notificationText: 'Your scrapbook session is running ♡',
-        callback: startCallback,
-      );
-    }
   }
 
   @override
@@ -87,11 +84,131 @@ class _CanvasScreenState extends State<CanvasScreen>
     _ws.removeListener(_onWsState);
     _transformCtrl.removeListener(_onCanvasTransform);
     _transformCtrl.dispose();
+    _tapDotTimer?.cancel();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   // Rebuild whenever the canvas is panned/zoomed so screen-space items follow.
-  void _onCanvasTransform() => setState(() {});
+  void _onCanvasTransform() {
+    if (!mounted) return;
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final scale = _transformCtrl.value.getMaxScaleOnAxis().clamp(0.2, 4.0).toDouble();
+    final verticalOffset = -_transformCtrl.value.entry(1, 3);
+    final page = (1 + (verticalOffset / (viewportHeight * scale)).round())
+        .clamp(1, _canvasPageCount(scale))
+        .toInt();
+    setState(() => _currentPage = page);
+  }
+
+  int _canvasPageCount(double scale) =>
+      (4000 / (MediaQuery.sizeOf(context).height / scale)).ceil().clamp(1, 99).toInt();
+
+  void _snapToNearestPage() {
+    final matrix = Matrix4.copy(_transformCtrl.value);
+    final scale = matrix.getMaxScaleOnAxis().clamp(0.2, 4.0).toDouble();
+    final span = MediaQuery.sizeOf(context).height * scale;
+    final page = (1 + (-matrix.entry(1, 3) / span).round())
+        .clamp(1, _canvasPageCount(scale))
+        .toInt();
+    matrix.setEntry(1, 3, -((page - 1) * span).toDouble());
+    _currentPage = page;
+    _transformCtrl.value = matrix;
+  }
+
+  void _toggleImmersive() {
+    _tapDotTimer?.cancel();
+    setState(() => _isImmersive = !_isImmersive);
+    SystemChrome.setEnabledSystemUIMode(
+      _isImmersive ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
+  }
+
+  void _moveCanvasPage(int direction) {
+    final matrix = Matrix4.copy(_transformCtrl.value);
+    final scale = matrix.getMaxScaleOnAxis().clamp(0.2, 4.0).toDouble();
+    final target = (_currentPage + direction)
+        .clamp(1, _canvasPageCount(scale))
+        .toInt();
+    if (target == _currentPage) return;
+    final pageStep = MediaQuery.sizeOf(context).height * scale;
+    matrix.setEntry(1, 3, -((target - 1) * pageStep).toDouble());
+    _transformCtrl.value = matrix;
+  }
+
+  void _onCanvasPointerDown(PointerDownEvent event) {
+    final position = _toCanvasCoords(event.localPosition);
+    if (_tool == CanvasTool.pen) {
+      _tapDotTimer?.cancel();
+      _pointerStart = position;
+      _pointerPressure = event.pressure;
+      _penStrokeStarted = false;
+    } else if (_tool == CanvasTool.erase) {
+      _ws.eraseStrokeAt(position, radius: _strokeWidth * 2.5 + 12);
+    }
+  }
+
+  void _onCanvasPointerMove(PointerMoveEvent event) {
+    final position = _toCanvasCoords(event.localPosition);
+    if (_tool == CanvasTool.pen) {
+      final start = _pointerStart;
+      if (!_penStrokeStarted && start != null && (position - start).distance > 1.5) {
+        _tapDotTimer?.cancel();
+        final pressure = _pointerPressure.clamp(0.0, 1.0);
+        _ws.onDrawStart(
+          start,
+          _selectedColor,
+          (_strokeWidth * (0.72 + pressure * 0.55)).toDouble(),
+        );
+        _penStrokeStarted = true;
+      }
+      if (_penStrokeStarted) {
+        _ws.onDrawMove(position);
+        _ws.onCursorMove(position);
+      }
+    } else if (_tool == CanvasTool.erase) {
+      _ws.eraseStrokeAt(position, radius: _strokeWidth * 2.5 + 12);
+    }
+  }
+
+  void _onCanvasPointerUp(PointerEvent event) {
+    if (_tool == CanvasTool.pen) {
+      if (_penStrokeStarted) {
+        _ws.onDrawEnd();
+      } else if (_pointerStart != null) {
+        final position = _pointerStart!;
+        final color = _selectedColor;
+        final width = (_strokeWidth *
+                (0.72 + _pointerPressure.clamp(0.0, 1.0) * 0.55))
+            .toDouble();
+        _tapDotTimer = Timer(const Duration(milliseconds: 280), () {
+          if (!mounted) return;
+          _ws.onDrawStart(position, color, width);
+          _ws.onDrawEnd();
+        });
+      }
+    }
+    _pointerStart = null;
+    _penStrokeStarted = false;
+  }
+
+  void _onCanvasPointerCancel(PointerEvent event) {
+    _tapDotTimer?.cancel();
+    if (_penStrokeStarted) _ws.onDrawEnd();
+    _pointerStart = null;
+    _penStrokeStarted = false;
+  }
+
+  void _onCanvasPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
+    final now = DateTime.now();
+    if (_lastWheelTurn != null &&
+        now.difference(_lastWheelTurn!) < const Duration(milliseconds: 220)) {
+      return;
+    }
+    _lastWheelTurn = now;
+    _moveCanvasPage(event.scrollDelta.dy > 0 ? 1 : -1);
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -685,39 +802,17 @@ class _CanvasScreenState extends State<CanvasScreen>
             // ── Infinite canvas ──
             Listener(
               behavior: HitTestBehavior.opaque,
-              onPointerDown: _tool == CanvasTool.pen
-                  ? (e) => ws.onDrawStart(
-                      _toCanvasCoords(e.localPosition),
-                      _selectedColor,
-                      _strokeWidth,
-                    )
-                  : null,
-              onPointerMove: (e) {
-                final pos = _toCanvasCoords(e.localPosition);
-                if (_tool == CanvasTool.pen) {
-                  ws.onDrawMove(pos);
-                  ws.onCursorMove(pos);
-                } else if (_tool == CanvasTool.erase) {
-                  final strokesToRemove = <String>[];
-                  for (final s in ws.strokes) {
-                    for (final pt in s.points) {
-                      if ((pt - pos).distance < 20.0) {
-                        strokesToRemove.add(s.id);
-                        break;
-                      }
-                    }
-                  }
-                  for (final id in strokesToRemove) {
-                    ws.eraseStroke(id);
-                  }
-                }
-              },
-              onPointerUp: _tool == CanvasTool.pen
-                  ? (_) => ws.onDrawEnd()
-                  : null,
+              onPointerDown: _onCanvasPointerDown,
+              onPointerMove: _onCanvasPointerMove,
+              onPointerUp: _onCanvasPointerUp,
+              onPointerCancel: _onCanvasPointerCancel,
+              onPointerSignal: _onCanvasPointerSignal,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _showToolbar = !_showToolbar),
+                onTap: _tool == CanvasTool.pan
+                    ? () => setState(() => _showToolbar = !_showToolbar)
+                    : null,
+                onDoubleTap: _toggleImmersive,
                 child: InteractiveViewer(
                   transformationController: _transformCtrl,
                   boundaryMargin: const EdgeInsets.all(double.infinity),
@@ -726,17 +821,29 @@ class _CanvasScreenState extends State<CanvasScreen>
                   maxScale: 4.0,
                   panEnabled: _tool == CanvasTool.pan,
                   scaleEnabled: _tool == CanvasTool.pan,
+                  onInteractionEnd: (_) => _snapToNearestPage(),
                   child: SizedBox(
                     width: 4000,
                     height: 4000,
                     // Strokes only — items live in the outer Stack (screen space)
-                    child: CustomPaint(
-                      painter: CanvasPainter(
-                        cachedPicture: ws.cachedStrokesPicture,
-                        activeStrokes: ws.activeStrokes,
-                        partnerCursor: ws.partnerCursor,
-                      ),
-                      size: const Size(4000, 4000),
+                    child: Stack(
+                      children: [
+                        const Positioned.fill(
+                          child: CustomPaint(
+                            painter: PaperPainter(),
+                            size: Size(4000, 4000),
+                          ),
+                        ),
+                        CustomPaint(
+                          painter: CanvasPainter(
+                            cachedPicture: ws.cachedStrokesPicture,
+                            activeStrokes: ws.activeStrokes,
+                            partnerCursor: ws.partnerCursor,
+                            repaint: ws.canvasRepaint,
+                          ),
+                          size: const Size(4000, 4000),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -779,16 +886,20 @@ class _CanvasScreenState extends State<CanvasScreen>
                     child: Container(
                       width: 4000,
                       height: 4000,
-                      color: Theme.of(context).scaffoldBackgroundColor,
+                      color: const Color(0xFFF7F3E9),
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
+                          const Positioned.fill(
+                            child: CustomPaint(painter: PaperPainter()),
+                          ),
                           Positioned.fill(
                             child: CustomPaint(
                               painter: CanvasPainter(
                                 cachedPicture: ws.cachedStrokesPicture,
                                 activeStrokes: ws.activeStrokes,
                                 partnerCursor: null, // Omit cursor during export
+                                repaint: ws.canvasRepaint,
                               ),
                             ),
                           ),
@@ -842,6 +953,7 @@ class _CanvasScreenState extends State<CanvasScreen>
                 ),
               ),
 
+            if (!_isImmersive)
             // ── Top bar ──
             Positioned(
               top: 0,
@@ -1029,6 +1141,7 @@ class _CanvasScreenState extends State<CanvasScreen>
               ),
             ),
 
+            if (!_isImmersive)
             // ── Bottom toolbar ──
             AnimatedPositioned(
               duration: const Duration(milliseconds: 250),
@@ -1042,13 +1155,14 @@ class _CanvasScreenState extends State<CanvasScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
+                  color: const Color(0xFFF8F5EE),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFE6DECF)),
+                  boxShadow: const [
                     BoxShadow(
-                      color: const Color(0xFF2D1B3D).withAlpha(18),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
+                      color: Color(0x18000000),
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
                     ),
                   ],
                 ),
@@ -1217,6 +1331,47 @@ class _CanvasScreenState extends State<CanvasScreen>
                 ),
               ),
             ),
+
+            if (!_isImmersive)
+              Positioned(
+                right: 16,
+                top: MediaQuery.sizeOf(context).height * 0.42,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F5EE).withAlpha(235),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE3DCCF)),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Previous page',
+                        onPressed: _currentPage > 1 ? () => _moveCanvasPage(-1) : null,
+                        icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '$_currentPage / ${_canvasPageCount(_transformCtrl.value.getMaxScaleOnAxis().clamp(0.2, 4.0).toDouble())}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF625B50)),
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Next page',
+                        onPressed: () => _moveCanvasPage(1),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

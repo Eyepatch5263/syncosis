@@ -3,6 +3,34 @@ import 'package:flutter/material.dart';
 
 import '../models/stroke.dart';
 
+/// Draws the static paper layer separately so the ruled sheet is not redrawn
+/// whenever the active pen stroke changes.
+class PaperPainter extends CustomPainter {
+  const PaperPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawColor(const Color(0xFFF7F3E9), BlendMode.src);
+    final rulePaint = Paint()
+      ..color = const Color(0xFFE7E0D2)
+      ..strokeWidth = 1
+      ..isAntiAlias = false;
+    for (double y = 48; y < size.height; y += 48) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), rulePaint);
+    }
+    canvas.drawLine(
+      const Offset(88, 0),
+      Offset(88, size.height),
+      Paint()
+        ..color = const Color(0x22C77C70)
+        ..strokeWidth = 1.25,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant PaperPainter oldDelegate) => false;
+}
+
 class CanvasPainter extends CustomPainter {
   final ui.Picture? cachedPicture;
   final List<Stroke> activeStrokes;
@@ -12,7 +40,8 @@ class CanvasPainter extends CustomPainter {
     required this.cachedPicture,
     required this.activeStrokes,
     this.partnerCursor,
-  });
+    Listenable? repaint,
+  }) : super(repaint: repaint);
 
   /// The beautiful quadratic bezier math algorithm abstracted so it can be 
   /// shared by the static PictureRecorder caching engine and the active painter loop.
@@ -93,5 +122,8 @@ class CanvasPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CanvasPainter oldDelegate) => true;
+  bool shouldRepaint(covariant CanvasPainter oldDelegate) =>
+      oldDelegate.cachedPicture != cachedPicture ||
+      oldDelegate.activeStrokes != activeStrokes ||
+      oldDelegate.partnerCursor != partnerCursor;
 }

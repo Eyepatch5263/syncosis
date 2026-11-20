@@ -20,6 +20,7 @@ class WebSocketService extends ChangeNotifier {
 
   final List<Stroke> strokes = [];
   final Map<String, Stroke> _activeStrokesMap = {};
+  final ChangeNotifier canvasRepaint = ChangeNotifier();
   
   // Undo/Redo Engine
   final List<Stroke> undoStack = [];
@@ -249,7 +250,7 @@ class WebSocketService extends ChangeNotifier {
       stroke.points.add(_offsetFromData(data));
     }
     
-    notifyListeners();
+    canvasRepaint.notifyListeners();
     _tryUpdateWidget(throttle: true);
   }
 
@@ -294,7 +295,7 @@ class WebSocketService extends ChangeNotifier {
     
     // 1. Unthrottled local instantaneous render
     _activeStrokesMap[_currentStrokeId!]?.points.add(position);
-    notifyListeners();
+    canvasRepaint.notifyListeners();
 
     // 2. Queue for network batching
     _drawMoveBatchQueue.add(position);
@@ -370,6 +371,39 @@ class WebSocketService extends ChangeNotifier {
       data: {'id': strokeId},
     ));
     _tryUpdateWidget();
+  }
+
+  /// Erase the topmost intersecting stroke with one cache rebuild per hit.
+  /// Segment checks catch fast swipes that pass between sampled points.
+  bool eraseStrokeAt(Offset position, {double radius = 18}) {
+    final radiusSquared = radius * radius;
+    for (final stroke in strokes.reversed) {
+      final points = stroke.points;
+      for (var i = 0; i < points.length; i++) {
+        final point = points[i];
+        if ((point - position).distanceSquared <= radiusSquared) {
+          eraseStroke(stroke.id);
+          return true;
+        }
+        if (i == 0) continue;
+        final start = points[i - 1];
+        final segment = point - start;
+        final lengthSquared = segment.distanceSquared;
+        final delta = position - start;
+        final t = lengthSquared == 0
+            ? 0.0
+            : ((delta.dx * segment.dx + delta.dy * segment.dy) /
+                    lengthSquared)
+                .clamp(0.0, 1.0)
+                .toDouble();
+        final nearest = start + segment * t;
+        if ((nearest - position).distanceSquared <= radiusSquared) {
+          eraseStroke(stroke.id);
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /// Removes the user's most recent local stroke without affecting the partner's strokes.
@@ -561,6 +595,7 @@ class WebSocketService extends ChangeNotifier {
   @override
   void dispose() {
     _channel?.sink.close();
+    canvasRepaint.dispose();
     super.dispose();
   }
 }
